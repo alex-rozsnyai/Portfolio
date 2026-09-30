@@ -630,3 +630,94 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   .reveal-up { opacity: 1; transform: none; }
   html { scroll-behavior: auto; }
 }
+
+/* ── 08 In motion ─────────────────────────────────────────────────────────────
+   Four vertical clips shot on a phone, so the frame is 9:16 and the design has to
+   want that rather than tolerate it. They sit on a rail that scrolls sideways,
+   which is how vertical video is watched everywhere else, and each frame is
+   nudged off the baseline of its neighbour so the row reads as plates leaving
+   the pass rather than as four identical cards. */
+.reel-section { position: relative; }
+.reel-head { max-width: 46ch; margin-bottom: clamp(28px, 4vw, 48px); }
+.reel-head .card-body { margin-top: 14px; }
+
+.reel-rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(230px, 1fr);
+  gap: clamp(14px, 2vw, 26px);
+  list-style: none;
+  /* The rail runs to the page edge on purpose: a clip cut by the viewport edge is
+     the cue that there is more to scroll, and it needs no arrow to say so. */
+  margin-right: calc(var(--gutter) * -1);
+  padding-right: var(--gutter);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.reel-rail::-webkit-scrollbar { display: none; }
+.reel { scroll-snap-align: start; }
+/* The stagger. Second and fourth hang lower, and it collapses on a narrow screen
+   where a single column is all that is on show anyway. */
+.reel:nth-child(even) { margin-top: clamp(20px, 4vw, 56px); }
+
+.reel-open {
+  position: relative; display: block; width: 100%;
+  padding: 0; border: 0; background: none; cursor: pointer;
+  border-radius: 2px; overflow: hidden;
+  outline-offset: 4px;
+}
+.reel-open video {
+  display: block; width: 100%; aspect-ratio: 9 / 16;
+  object-fit: cover; background: var(--charred);
+  transition: transform 0.6s var(--ease), filter 0.6s var(--ease);
+}
+.reel-open:hover video, .reel-open:focus-visible video { transform: scale(1.03); }
+
+/* One gold hairline, drawn under the frame the pointer is on. It marked the clip
+   that was playing until all four started playing together, at which point four
+   identical hairlines said nothing; as a hover cue it earns its place again. */
+.reel-open::after {
+  content: ""; position: absolute; left: 16px; bottom: 0;
+  width: 0; height: 2px; background: var(--gold);
+  transition: width 0.5s var(--ease);
+}
+/* Marks the clip the sequence is on. Meaningful again now that exactly one plays
+   at a time; hover keeps it too, because hovering is how you move the sequence. */
+.reel-open.is-playing::after, .reel-open:hover::after, .reel-open:focus-visible::after { width: 34px; }
+/* The clip being played is the one in colour; the rest sit back. */
+.reel-open video { filter: saturate(0.78) brightness(0.72); }
+.reel-open.is-playing video, .reel-open:hover video, .reel-open:focus-visible video { filter: none; }
+.reel-hint {
+  margin-top: 18px; font-family: var(--label);
+  font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--flour-mute);
+}
+
+/* The clip viewer. Deliberately not the dish lightbox: that one holds an <img> and
+   steps through a gallery, and folding a <video> into it would have meant two
+   behaviours arguing inside one component. */
+.vbox {
+  position: fixed; inset: 0; z-index: 90;
+  display: none; place-items: center;
+  background: rgba(6, 6, 6, 0.94);
+  padding: clamp(16px, 4vw, 48px);
+}
+.vbox[aria-hidden="false"] { display: grid; }
+.vbox-stage { max-width: min(420px, 92vw); width: 100%; }
+.vbox-stage video {
+  display: block; width: 100%; aspect-ratio: 9 / 16;
+  background: #000; border-radius: 2px;
+}
+.vbox-close { top: 18px; right: 18px; }
+
+@media (max-width: 640px) {
+  .reel-rail { grid-auto-columns: 78vw; }
+  .reel:nth-child(even) { margin-top: 0; }
+}
+/* Nothing here should move for someone who asked for stillness: the clips hold on
+   their poster frame and are played only on a tap. */
+@media (prefers-reduced-motion: reduce) {
+  .reel-open video, .reel-open::after { transition: none; }
+  .reel-open:hover video, .reel-open:focus-visible video { transform: none; }
+}

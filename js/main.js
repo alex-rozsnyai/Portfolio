@@ -113,3 +113,113 @@
     sx = null;
   });
 })();
+
+/* ── 08 In motion ─────────────────────────────────────────────────────────────
+   The rail plays as one sequence: one clip at a time, and when it ends the next
+   one starts. That is why the markup carries no `loop` attribute — a looping video
+   never fires `ended`, and `ended` is the whole handover.
+
+   Only the section being on screen starts it, and leaving stops it, so nothing is
+   decoding behind a part of the page nobody is looking at. preload="none" means a
+   visitor who never scrolls this far fetches none of it.
+
+   Hovering a clip hands the sequence to that clip rather than fighting it, so the
+   rail stays a single thread of playback however it is driven.
+
+   Sound is never taken without being asked: the rail is muted, and the viewer is
+   where a clip gets its audio. */
+(function () {
+  const section = document.getElementById("motion");
+  if (!section) return;
+  const reels = [...section.querySelectorAll(".reel-open")];
+  if (!reels.length) return;
+
+  const videos = reels.map((btn) => btn.querySelector("video"));
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let active = -1;
+  let running = false;
+
+  const mark = (i) => reels.forEach((btn, n) => btn.classList.toggle("is-playing", n === i));
+
+  const start = (i) => {
+    if (!running) return;
+    const v = videos[i];
+    if (active !== i && active >= 0) videos[active].pause();
+    active = i;
+    mark(i);
+    // From the top, so a clip picked up mid-sequence is not joined halfway.
+    if (v.currentTime > 0 && v.ended) v.currentTime = 0;
+    v.play().catch(() => {});
+  };
+
+  // The handover. `ended` fires once per clip, and the next index wraps, so the rail
+  // runs continuously for as long as the section is on screen.
+  videos.forEach((v, i) =>
+    v.addEventListener("ended", () => {
+      v.currentTime = 0;
+      start((i + 1) % videos.length);
+    }),
+  );
+
+  const stop = () => {
+    running = false;
+    videos.forEach((v) => v.pause());
+    mark(-1);
+  };
+
+  if (!still && "IntersectionObserver" in window) {
+    new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          running = true;
+          start(active < 0 ? 0 : active);
+        } else {
+          stop();
+        }
+      },
+      { threshold: 0.12 },
+    ).observe(section);
+  }
+
+  // Hover and keyboard focus move the sequence rather than starting a second one.
+  reels.forEach((btn, i) => {
+    const take = () => { running = true; start(i); };
+    btn.addEventListener("pointerenter", take);
+    btn.addEventListener("focus", take);
+  });
+
+  // The viewer: the same clip, from the top, with sound and controls.
+  const box = document.getElementById("vbox");
+  const stage = box.querySelector("video");
+  let lastFocus = null;
+
+  const open = (btn) => {
+    lastFocus = btn;
+    stage.src = btn.querySelector("video").getAttribute("src");
+    stage.currentTime = 0;
+    box.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    // The rail would otherwise keep running behind a full-screen dialog, competing
+    // with the clip actually being watched.
+    stop();
+    stage.play().catch(() => {});
+    box.querySelector(".vbox-close").focus();
+  };
+
+  const close = () => {
+    box.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    stage.pause();
+    // Drop the source so it stops buffering behind a closed dialog.
+    stage.removeAttribute("src");
+    stage.load();
+    if (lastFocus) lastFocus.focus();
+  };
+
+  reels.forEach((btn) => btn.addEventListener("click", () => open(btn)));
+  box.querySelector(".vbox-close").addEventListener("click", close);
+  box.addEventListener("click", (e) => { if (e.target === box) close(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && box.getAttribute("aria-hidden") === "false") close();
+  });
+})();
