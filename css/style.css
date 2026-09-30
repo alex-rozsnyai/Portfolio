@@ -137,7 +137,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   letter-spacing: 0.01em;
   color: var(--flour);
 }
-.hero-wordmark .line { display: block; overflow: hidden; }
+.hero-wordmark .line {
+  display: block; overflow: hidden;
+  /* line-height 0.82 makes the mask shorter than the glyphs; pad it up and pull it back */
+  padding: 0.1em 0 0.03em;
+  margin: -0.1em 0 -0.03em;
+}
 .hero-wordmark .line span {
   display: block;
   transform: translateY(105%);
